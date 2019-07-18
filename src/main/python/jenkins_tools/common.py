@@ -71,14 +71,16 @@ class Jenkins:
         else:
             return False
 
-    def get_object(self,url="",tree=""):
+    def get_object(self,url="",tree="", api_suffix="api/json?"):
         """
         Get Jenkins object(job, view, folder, agent.. )'s information from the web UI url
 
         :param url: Object's web UI url
         :return: Json Object
         """
-        api_url = f"{url}api/json?{tree}"
+        if api_suffix == "":
+            tree = ""
+        api_url = f"{url}{api_suffix}{tree}"
         res = requests.get(api_url, auth=self._auth)
         if res.status_code != 200:
             raise Exception(f"Call url = {api_url}, Error code = {res.status_code}. Check your request")
