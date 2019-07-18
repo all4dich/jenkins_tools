@@ -17,3 +17,16 @@ class JobClasses:
         return self._workflow
 
 job_classes = JobClasses()
+
+
+class AgentClasses:
+    def __init__(self):
+        self._slavecomputer= "hudson.slaves.SlaveComputer"
+
+    @property
+    def slavecomputer(self):
+        return self._slavecomputer
+
+
+agent_classes = AgentClasses()
+

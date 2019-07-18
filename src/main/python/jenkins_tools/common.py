@@ -2,7 +2,7 @@ import json
 import requests
 import logging
 
-from jenkins_tools.types import job_classes
+from jenkins_tools.types import job_classes, agent_classes
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -23,7 +23,8 @@ class Jenkins:
         self._auth = (self._username, self._password)
         self._jobs = []
         self._flatted_jobs = []
-
+        self._slaves = []
+        self._master = []
     @property
     def url(self):
         return self._url
@@ -70,17 +71,35 @@ class Jenkins:
         else:
             return False
 
-    def get_object(self,url=""):
+    def get_object(self,url="",tree=""):
         """
         Get Jenkins object(job, view, folder, agent.. )'s information from the web UI url
 
         :param url: Object's web UI url
         :return: Json Object
         """
-        api_url = f"{url}api/json"
+        api_url = f"{url}api/json?{tree}"
         res = requests.get(api_url, auth=self._auth)
         if res.status_code != 200:
             raise Exception(f"Call url = {api_url}, Error code = {res.status_code}. Check your request")
         else:
             res_json = json.loads(res.text)
             return res_json
+
+    def get_agents(self):
+        """
+        Get a list of all agents and make a list of slaves and master
+        All slaves are assigned to a variable 'self._slaves' and a master is assigned to 'self._master'
+
+        :return: A list of slaves that its '_class' is 'hudson.slaves.SlaveComputer'
+        """
+        api_url = f"{self._url}/computer/"
+        res = self.get_object(api_url,tree="&tree=computer[_class,displayName,description,assignedLabels[name],idle,offline,absoluteRemotePath]")
+        slaves = filter(lambda agent: agent['_class'] == agent_classes.slavecomputer, res['computer'])
+        self._master = filter(lambda agent: agent['_class'] != agent_classes.slavecomputer, res['computer'])
+        for each_slave in slaves:
+            each_slave['labels'] = list(
+                set(map(lambda each_label: each_label['name'], each_slave['assignedLabels']))
+            )
+            self._slaves.append(each_slave)
+        return self._slaves
