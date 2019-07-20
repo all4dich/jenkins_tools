@@ -26,6 +26,7 @@ class Jenkins:
         self._flatted_jobs = []
         self._slaves = []
         self._master = []
+        self._jobDict = {}
 
     @property
     def url(self):
@@ -49,6 +50,7 @@ class Jenkins:
         while self._jobs:
             each_job = self._jobs.pop()
             self._flatted_jobs.append(each_job)
+            self._jobDict[each_job['fullName']] = each_job
             if each_job['_class'] == job_classes.folder:
                 r = self.get_object(each_job['url'], tree=_job_tree)
                 jobs = r['jobs']
@@ -58,6 +60,7 @@ class Jenkins:
                         self._jobs.append(sub_job)
                     else:
                         self._flatted_jobs.append(sub_job)
+                        self._jobDict[sub_job['fullName']] = each_job
         self._jobs = self._flatted_jobs
         return self._flatted_jobs
 
@@ -124,8 +127,4 @@ class Jenkins:
         returned_job = ""
         if len(self._flatted_jobs) == 0:
             self.get_jobs()
-        for each_job in self._flatted_jobs:
-            if each_job['fullName'] == job_name:
-                returned_job = each_job
-                break
-        return returned_job
+        return self._jobDict[job_name]
