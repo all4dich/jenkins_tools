@@ -15,6 +15,7 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
+_job_tree = "&tree=jobs[_class,name,url,displayName,fullDisplayName,fullName]"
 class Jenkins:
     def __init__(self, url, username, password):
         self._url = url
@@ -47,13 +48,13 @@ class Jenkins:
         for each_job in self._jobs:
             self._flatted_jobs.append(each_job)
             if each_job['_class'] == job_classes.folder:
-                r = self.get_object(each_job['url'])
+                r = self.get_object(each_job['url'], tree=_job_tree)
                 jobs = r['jobs']
                 each_job['jobs'] = jobs
                 self._flatted_jobs = list(self._flatted_jobs + jobs)
         return self._flatted_jobs
 
-    def check_connection(self,tree=""):
+    def check_connection(self,tree=_job_tree):
         """
         Check if you can call Jenkins api with host and authentication information you provide
         :param tree: Set the range of returned data from Jenkins like "&tree=jobs[name]"
@@ -105,3 +106,17 @@ class Jenkins:
             )
             self._slaves.append(each_slave)
         return self._slaves
+
+    def get_job(self, job_name):
+        """
+        Get a job uri and return its information
+
+        :param job_name:
+        :return:
+        """
+        returned_job = ""
+        for each_job in self._flatted_jobs:
+            if each_job['fullName'] == job_name:
+                returned_job = each_job
+                break
+        return returned_job
