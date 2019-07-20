@@ -46,13 +46,19 @@ class Jenkins:
         """
         self.check_connection()
         self._flatted_jobs = []
-        for each_job in self._jobs:
+        while self._jobs:
+            each_job = self._jobs.pop()
             self._flatted_jobs.append(each_job)
             if each_job['_class'] == job_classes.folder:
                 r = self.get_object(each_job['url'], tree=_job_tree)
                 jobs = r['jobs']
                 each_job['jobs'] = jobs
-                self._flatted_jobs = list(self._flatted_jobs + jobs)
+                for sub_job in jobs:
+                    if sub_job['_class'] == job_classes.folder:
+                        self._jobs.append(sub_job)
+                    else:
+                        self._flatted_jobs.append(sub_job)
+        self._jobs = self._flatted_jobs
         return self._flatted_jobs
 
     def check_connection(self,tree=_job_tree):
