@@ -26,6 +26,7 @@ class Jenkins:
         self._flatted_jobs = []
         self._slaves = []
         self._master = []
+
     @property
     def url(self):
         return self._url
@@ -115,6 +116,8 @@ class Jenkins:
         :return:
         """
         returned_job = ""
+        if len(self._flatted_jobs) == 0:
+            self.get_jobs()
         for each_job in self._flatted_jobs:
             if each_job['fullName'] == job_name:
                 returned_job = each_job
