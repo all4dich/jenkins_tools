@@ -96,8 +96,14 @@ class Jenkins:
         if res.status_code != 200:
             raise Exception(f"Call url = {api_url}, Error code = {res.status_code}. Check your request")
         else:
-            res_json = json.loads(res.text)
-            return res_json
+            try:
+                res_json = json.loads(res.text)
+            except:
+                # Return an object's config.xml data
+                return res.text
+            else:
+                # Return an object's detailed information
+                return res_json
 
     def get_agents(self):
         """
@@ -128,3 +134,9 @@ class Jenkins:
         if len(self._flatted_jobs) == 0:
             self.get_jobs()
         return self._jobDict[job_name]
+
+    def get_job_config(self, job_name):
+        job_obj = self.get_job(job_name)
+        job_url = job_obj['url']
+        job_config_url = f"{job_url}config.xml"
+        return self.get_object(url=job_config_url,tree="",api_suffix="")
