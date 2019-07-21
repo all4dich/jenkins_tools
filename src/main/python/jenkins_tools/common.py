@@ -40,6 +40,15 @@ class Jenkins:
     def jobs(self):
         return self._jobs
 
+    def _set_header(self, headers={}):
+        # Get Crumb data
+        crumb_url = f"{self._url}/crumbIssuer/api/json"
+        logger.info(f"Getting crumb information from {crumb_url}")
+        crumb_res = requests.get(url=crumb_url, auth=self._auth)
+        crumb_json = json.loads(crumb_res.text)
+        headers[crumb_json['crumbRequestField']] = crumb_json['crumb']
+        return headers
+
     def get_jobs(self):
         """
         Get a list of all jobs including items under 'Folder' object
@@ -140,3 +149,14 @@ class Jenkins:
         job_url = job_obj['url']
         job_config_url = f"{job_url}config.xml"
         return self.get_object(url=job_config_url,tree="",api_suffix="")
+
+    def update_job_config(self,job_name,data=None):
+        job_info = self.get_job(job_name)
+        job_config_url = f"{job_info['url']}config.xml"
+        headers = self._set_header({ "content-type": "application/xml" })
+        job_update_req = requests.post(job_config_url, data=data, auth=self._auth, headers=headers)
+        if job_update_req.status_code != 200:
+            logger.error(job_update_req.text)
+            raise Exception(f"Updating {job_name}'s config.xml has been failed")
+        else:
+            logger.info(f"Updating {job_name}'s config.xml is done with SUCCESS")
