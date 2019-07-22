@@ -1,7 +1,7 @@
 class JobClasses:
     def __init__(self):
         self._folder = "com.cloudbees.hudson.plugins.folder.Folder"
-        self._free_style = "hudson.model.FreeStyleProject",
+        self._free_style = "hudson.model.FreeStyleProject"
         self._workflow = "org.jenkinsci.plugins.workflow.job.WorkflowJob"
 
     @property

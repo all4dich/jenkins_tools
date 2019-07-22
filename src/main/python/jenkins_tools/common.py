@@ -15,6 +15,7 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
+_job_tree = "&tree=jobs[_class,name,url,displayName,fullDisplayName,fullName]"
 class Jenkins:
     def __init__(self, url, username, password):
         self._url = url
@@ -25,6 +26,8 @@ class Jenkins:
         self._flatted_jobs = []
         self._slaves = []
         self._master = []
+        self._jobDict = {}
+
     @property
     def url(self):
         return self._url
@@ -37,6 +40,15 @@ class Jenkins:
     def jobs(self):
         return self._jobs
 
+    def _set_header(self, headers={}):
+        # Get Crumb data
+        crumb_url = f"{self._url}/crumbIssuer/api/json"
+        logger.info(f"Getting crumb information from {crumb_url}")
+        crumb_res = requests.get(url=crumb_url, auth=self._auth)
+        crumb_json = json.loads(crumb_res.text)
+        headers[crumb_json['crumbRequestField']] = crumb_json['crumb']
+        return headers
+
     def get_jobs(self):
         """
         Get a list of all jobs including items under 'Folder' object
@@ -44,16 +56,24 @@ class Jenkins:
         """
         self.check_connection()
         self._flatted_jobs = []
-        for each_job in self._jobs:
+        while self._jobs:
+            each_job = self._jobs.pop()
             self._flatted_jobs.append(each_job)
+            self._jobDict[each_job['fullName']] = each_job
             if each_job['_class'] == job_classes.folder:
-                r = self.get_object(each_job['url'])
+                r = self.get_object(each_job['url'], tree=_job_tree)
                 jobs = r['jobs']
                 each_job['jobs'] = jobs
-                self._flatted_jobs = list(self._flatted_jobs + jobs)
+                for sub_job in jobs:
+                    if sub_job['_class'] == job_classes.folder:
+                        self._jobs.append(sub_job)
+                    else:
+                        self._flatted_jobs.append(sub_job)
+                        self._jobDict[sub_job['fullName']] = each_job
+        self._jobs = self._flatted_jobs
         return self._flatted_jobs
 
-    def check_connection(self,tree=""):
+    def check_connection(self,tree=_job_tree):
         """
         Check if you can call Jenkins api with host and authentication information you provide
         :param tree: Set the range of returned data from Jenkins like "&tree=jobs[name]"
@@ -85,8 +105,14 @@ class Jenkins:
         if res.status_code != 200:
             raise Exception(f"Call url = {api_url}, Error code = {res.status_code}. Check your request")
         else:
-            res_json = json.loads(res.text)
-            return res_json
+            try:
+                res_json = json.loads(res.text)
+            except:
+                # Return an object's config.xml data
+                return res.text
+            else:
+                # Return an object's detailed information
+                return res_json
 
     def get_agents(self):
         """
@@ -105,3 +131,32 @@ class Jenkins:
             )
             self._slaves.append(each_slave)
         return self._slaves
+
+    def get_job(self, job_name):
+        """
+        Get a job uri and return its information
+
+        :param job_name:
+        :return:
+        """
+        returned_job = ""
+        if len(self._flatted_jobs) == 0:
+            self.get_jobs()
+        return self._jobDict[job_name]
+
+    def get_job_config(self, job_name):
+        job_obj = self.get_job(job_name)
+        job_url = job_obj['url']
+        job_config_url = f"{job_url}config.xml"
+        return self.get_object(url=job_config_url,tree="",api_suffix="")
+
+    def update_job_config(self,job_name,data=None):
+        job_info = self.get_job(job_name)
+        job_config_url = f"{job_info['url']}config.xml"
+        headers = self._set_header({ "content-type": "application/xml" })
+        job_update_req = requests.post(job_config_url, data=data, auth=self._auth, headers=headers)
+        if job_update_req.status_code != 200:
+            logger.error(job_update_req.text)
+            raise Exception(f"Updating {job_name}'s config.xml has been failed")
+        else:
+            logger.info(f"Updating {job_name}'s config.xml is done with SUCCESS")
