@@ -174,3 +174,22 @@ class Jenkins:
             raise Exception(f"Updating {job_name}'s config.xml has been failed")
         else:
             logger.info(f"Updating {job_name}'s config.xml is done with SUCCESS")
+
+    def create_job(self, job_name,data):
+        if job_name in self._jobDict:
+            message = f"You have been trying to create a job '{job_name}' but it exists!"
+            logger.warning(message)
+            raise Exception(message)
+        else:
+            create_url = f"{self._url}/createItem?name={job_name}"
+            job_url = f"{self._url}/job/{job_name}"
+            headers = self._set_header({"content-type": "application/xml"})
+            logger.info(f"Create a job {job_name} with the url {create_url}")
+            create_job = requests.post(create_url, auth=self._auth, data=data, headers=headers)
+            if create_job.status_code == 200:
+                logger.info(f"Create a job {job_name}: SUCCESS")
+                logger.info(f"Job url: {job_url}")
+            else:
+                logger.error(f"Create a job {job_name}: FAILED")
+                logger.error(f"{create_job.text}")
+                raise Exception(f"Create a job {job_name}: FAILED")
