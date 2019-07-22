@@ -45,8 +45,9 @@ class Jenkins:
         crumb_url = f"{self._url}/crumbIssuer/api/json"
         logger.info(f"Getting crumb information from {crumb_url}")
         crumb_res = requests.get(url=crumb_url, auth=self._auth)
-        crumb_json = json.loads(crumb_res.text)
-        headers[crumb_json['crumbRequestField']] = crumb_json['crumb']
+        if crumb_res.status_code == 200:
+            crumb_json = json.loads(crumb_res.text)
+            headers[crumb_json['crumbRequestField']] = crumb_json['crumb']
         return headers
 
     def get_jobs(self):
