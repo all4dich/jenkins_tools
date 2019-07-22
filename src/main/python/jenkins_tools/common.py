@@ -145,12 +145,25 @@ class Jenkins:
         return self._jobDict[job_name]
 
     def get_job_config(self, job_name):
+        """
+        Get job's name and return that job's config.xml data
+
+        :param job_name:
+        :return:
+        """
         job_obj = self.get_job(job_name)
         job_url = job_obj['url']
         job_config_url = f"{job_url}config.xml"
         return self.get_object(url=job_config_url,tree="",api_suffix="")
 
     def update_job_config(self,job_name,data=None):
+        """
+        Update a job's config.xml as new configuration data.
+
+        :param job_name:
+        :param data:
+        :return:
+        """
         job_info = self.get_job(job_name)
         job_config_url = f"{job_info['url']}config.xml"
         headers = self._set_header({ "content-type": "application/xml" })
