@@ -157,6 +157,19 @@ class Jenkins:
         job_config_url = f"{job_url}config.xml"
         return self.get_object(url=job_config_url,tree="",api_suffix="")
 
+    def get_job_builds(self, job_name):
+        """
+        Get a job's all builds
+
+        :param job_name:
+        :return:
+        """
+        job_obj = self.get_job(job_name)
+        job_url = job_obj['url']
+        builds_tree = "tree=builds[building,displayName,description,duration,fullDisplayName,id,number,queueId,result,url]"
+        return self.get_object(job_url, tree=builds_tree)['builds']
+
+
     def update_job_config(self,job_name,data=None):
         """
         Update a job's config.xml as new configuration data.
