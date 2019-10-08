@@ -70,7 +70,7 @@ class Jenkins:
                         self._jobs.append(sub_job)
                     else:
                         self._flatted_jobs.append(sub_job)
-                        self._jobDict[sub_job['fullName']] = each_job
+                        self._jobDict[sub_job['fullName']] = sub_job
         self._jobs = self._flatted_jobs
         return self._flatted_jobs
 
