@@ -169,6 +169,25 @@ class Jenkins:
         builds_tree = "tree=builds[building,displayName,description,duration,fullDisplayName,id,number,queueId,result,url]"
         return self.get_object(job_url, tree=builds_tree)['builds']
 
+    def delete_build(self, job_name, build_number):
+        """
+        Delete a build at job_name
+
+        :param job_name:
+        :param build_number:
+        :return:
+        """
+        job_obj = self.get_job(job_name)
+        job_url = job_obj['url']
+        delete_build_url = f"{job_url}/{build_number}/doDelete"
+        logger.info(f"Delete {job_name} #{build_number} build on {self.url}")
+        logger.debug(f"Delete url: {delete_build_url}")
+        build_del_req = requests.post(delete_build_url, auth=self._auth)
+        if build_del_req.status_code != 200:
+            logger.error(build_del_req.text)
+            raise Exception(f"Deleting {job_name} #{build_number} has been failed")
+        else:
+            logger.info(f"Deleting {job_name} #{build_number} is done")
 
     def update_job_config(self,job_name,data=None):
         """
