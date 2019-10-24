@@ -225,3 +225,18 @@ class Jenkins:
                 logger.error(f"Create a job {job_name}: FAILED")
                 logger.error(f"{create_job.text}")
                 raise Exception(f"Create a job {job_name}: FAILED")
+
+    def set_agent_offline(self, agent_name):
+        agent_url = self.url + "/computer/" + agent_name + "/"
+        res = self.get_object(agent_url, tree="&tree=offline")
+        if res["offline"]:
+            logger.error(f"Agent {agent_url} has been already offline mode")
+            return True
+        else:
+            res_offline = requests.post(agent_url+"/toggleOffline", auth=self._auth)
+            if res_offline.status_code != 200:
+                logger.error(f"Can't set {agent_name} as offline mode. Please check {agent_url}")
+                return False
+            else:
+                logger.warning(f"Done: {agent_name} has been set as offline")
+                return True
