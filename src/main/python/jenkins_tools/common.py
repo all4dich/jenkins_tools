@@ -5,12 +5,12 @@ import logging
 from jenkins_tools.types import job_classes, agent_classes
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+#logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter('%(levelname)7s:%(filename)s:%(lineno)d:%(funcName)10s: %(message)s')
 
 ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+#ch.setLevel(logging.INFO)
 ch.setFormatter(formatter)
 
 logger.addHandler(ch)
@@ -102,6 +102,7 @@ class Jenkins:
         if api_suffix == "":
             tree = ""
         api_url = f"{url}{api_suffix}{tree}"
+        logger.debug(f"API url to be called: {api_url}")
         res = requests.get(api_url, auth=self._auth)
         if res.status_code != 200:
             raise Exception(f"Call url = {api_url}, Error code = {res.status_code}. Check your request")
@@ -240,3 +241,25 @@ class Jenkins:
             else:
                 logger.warning(f"Done: {agent_name} has been set as offline")
                 return True
+
+    def get_build_parameters(self, job_name, number):
+        logger.debug(f"Getting parameters from {job_name} #{number}")
+        # params
+        #   - Key: Parameter name
+        #   - Value: Parameter value
+        params = {}
+        job_obj = self.get_job(job_name)
+        build_url = job_obj['url'] + f"{number}/"
+        build_parameter_tree = "&tree=actions[parameters[name,value]]"
+        logger.debug(f"Build url: {build_url}, Build parameter tree: {build_parameter_tree}")
+        build_param_data = self.get_object(build_url, tree=build_parameter_tree)
+        param_class_val = "hudson.model.ParametersAction"
+        param_actions = list(
+            filter(lambda each_action: "_class" in each_action and each_action["_class"] == param_class_val,
+                   build_param_data["actions"]))
+        for param_action in param_actions:
+            action_params = param_action["parameters"]
+            for each_param in action_params:
+                params[each_param['name']] = each_param['value']
+        logger.debug(f"Number of parameters: {len(params)}")
+        return params
