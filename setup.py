@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 python_src_root = "src/main/python"
 setup(
     name='jenkins_tools',
-    version='0.1',
+    version='0.1.1',
     zip_safe=False,
     description='Custom tools for Jenkins',
     author='Sunjoo Park',

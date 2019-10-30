@@ -263,3 +263,25 @@ class Jenkins:
                 params[each_param['name']] = each_param['value']
         logger.debug(f"Number of parameters: {len(params)}")
         return params
+
+    def get_build_causes(self, job_name, number):
+        logger.debug(f"Getting parameters from {job_name} #{number}")
+        # params
+        #   - Key: Parameter name
+        #   - Value: Parameter value
+        causes = []
+        job_obj = self.get_job(job_name)
+        build_url = job_obj['url'] + f"{number}/"
+        build_cause_tree = "&tree=actions[causes[*]]"
+        logger.debug(f"Build url: {build_url}, Build parameter tree: {build_cause_tree}")
+        build_cause_data = self.get_object(build_url, tree=build_cause_tree)
+        cause_class_val = "hudson.model.CauseAction"
+        cause_actions = list(
+            filter(lambda each_action: "_class" in each_action and each_action["_class"] == cause_class_val,
+                   build_cause_data["actions"]))
+        for cause_action in cause_actions:
+            actions = cause_action["causes"]
+            for each_cause in actions:
+                causes.append(each_cause)
+        logger.debug(causes)
+        return causes
