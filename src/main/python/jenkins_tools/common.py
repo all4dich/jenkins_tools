@@ -5,17 +5,19 @@ import logging
 from jenkins_tools.types import job_classes, agent_classes
 
 logger = logging.getLogger()
-#logger.setLevel(logging.INFO)
+logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter('%(levelname)7s:%(filename)s:%(lineno)d:%(funcName)10s: %(message)s')
 
 ch = logging.StreamHandler()
-#ch.setLevel(logging.INFO)
+# ch.setLevel(logging.INFO)
 ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
 _job_tree = "&tree=jobs[_class,name,url,displayName,fullDisplayName,fullName]"
+
+
 class Jenkins:
     def __init__(self, url, username, password):
         self._url = url
@@ -74,7 +76,7 @@ class Jenkins:
         self._jobs = self._flatted_jobs
         return self._flatted_jobs
 
-    def check_connection(self,tree=_job_tree):
+    def check_connection(self, tree=_job_tree):
         """
         Check if you can call Jenkins api with host and authentication information you provide
         :param tree: Set the range of returned data from Jenkins like "&tree=jobs[name]"
@@ -92,7 +94,7 @@ class Jenkins:
         else:
             return False
 
-    def get_object(self,url="",tree="", api_suffix="api/json?"):
+    def get_object(self, url="", tree="", api_suffix="api/json?"):
         """
         Get Jenkins object(job, view, folder, agent.. )'s information from the web UI url
 
@@ -124,7 +126,8 @@ class Jenkins:
         :return: A list of slaves that its '_class' is 'hudson.slaves.SlaveComputer'
         """
         api_url = f"{self._url}/computer/"
-        res = self.get_object(api_url,tree="&tree=computer[_class,displayName,description,assignedLabels[name],idle,offline,absoluteRemotePath]")
+        res = self.get_object(api_url,
+                              tree="&tree=computer[_class,displayName,description,assignedLabels[name],idle,offline,absoluteRemotePath]")
         slaves = filter(lambda agent: agent['_class'] == agent_classes.slavecomputer, res['computer'])
         self._master = filter(lambda agent: agent['_class'] != agent_classes.slavecomputer, res['computer'])
         for each_slave in slaves:
@@ -156,7 +159,7 @@ class Jenkins:
         job_obj = self.get_job(job_name)
         job_url = job_obj['url']
         job_config_url = f"{job_url}config.xml"
-        return self.get_object(url=job_config_url,tree="",api_suffix="")
+        return self.get_object(url=job_config_url, tree="", api_suffix="")
 
     def get_job_builds(self, job_name):
         """
@@ -190,7 +193,7 @@ class Jenkins:
         else:
             logger.info(f"Deleting {job_name} #{build_number} is done")
 
-    def update_job_config(self,job_name,data=None):
+    def update_job_config(self, job_name, data=None):
         """
         Update a job's config.xml as new configuration data.
 
@@ -200,7 +203,7 @@ class Jenkins:
         """
         job_info = self.get_job(job_name)
         job_config_url = f"{job_info['url']}config.xml"
-        headers = self._set_header({ "content-type": "application/xml" })
+        headers = self._set_header({"content-type": "application/xml"})
         job_update_req = requests.post(job_config_url, data=data, auth=self._auth, headers=headers)
         if job_update_req.status_code != 200:
             logger.error(job_update_req.text)
@@ -208,7 +211,7 @@ class Jenkins:
         else:
             logger.info(f"Updating {job_name}'s config.xml is done with SUCCESS")
 
-    def create_job(self, job_name,data):
+    def create_job(self, job_name, data):
         if job_name in self._jobDict:
             message = f"You have been trying to create a job '{job_name}' but it exists!"
             logger.warning(message)
@@ -227,14 +230,15 @@ class Jenkins:
                 logger.error(f"{create_job.text}")
                 raise Exception(f"Create a job {job_name}: FAILED")
 
-    def set_agent_offline(self, agent_name):
+    def set_agent_offline(self, agent_name, description=""):
         agent_url = self.url + "/computer/" + agent_name + "/"
         res = self.get_object(agent_url, tree="&tree=offline")
         if res["offline"]:
             logger.error(f"Agent {agent_url} has been already offline mode")
             return True
         else:
-            res_offline = requests.post(agent_url+"/toggleOffline", auth=self._auth)
+            res_offline = requests.post(agent_url + "/toggleOffline", auth=self._auth,
+                                        data={"offlineMessage": description})
             if res_offline.status_code != 200:
                 logger.error(f"Can't set {agent_name} as offline mode. Please check {agent_url}")
                 return False
