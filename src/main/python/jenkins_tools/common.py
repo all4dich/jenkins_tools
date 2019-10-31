@@ -230,7 +230,7 @@ class Jenkins:
                 logger.error(f"{create_job.text}")
                 raise Exception(f"Create a job {job_name}: FAILED")
 
-    def set_agent_offline(self, agent_name, description=""):
+    def set_agent_offline(self, agent_name, description):
         agent_url = self.url + "/computer/" + agent_name + "/"
         res = self.get_object(agent_url, tree="&tree=offline")
         if res["offline"]:
