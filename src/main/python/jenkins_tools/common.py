@@ -1,7 +1,6 @@
 import json
-import requests
 import logging
-
+import requests
 from jenkins_tools.types import job_classes, agent_classes
 
 logger = logging.getLogger()
@@ -229,6 +228,19 @@ class Jenkins:
                 logger.error(f"Create a job {job_name}: FAILED")
                 logger.error(f"{create_job.text}")
                 raise Exception(f"Create a job {job_name}: FAILED")
+
+    def delete_job(self, job_name):
+        if job_name in self._jobDict:
+            job_url = f"{self._url}/job/{job_name}"
+            delete_url = f"{job_url}/doDelete"
+            delete_request = requests.post(delete_url, auth=self._auth)
+            if delete_request.status_code != 200:
+                logger.error(f"INFO: Delete a job {job_name}")
+            else:
+                logger.error(f"{delete_request.status_code}")
+                logger.error(f"When deleting {job_name}")
+        else:
+            logger.error(f"{job_name} doesn't exist on Jenkins. So you can't delete it.")
 
     def set_agent_offline(self, agent_name, description):
         agent_url = self.url + "/computer/" + agent_name + "/"
