@@ -28,6 +28,7 @@ class Jenkins:
         self._slaves = []
         self._master = []
         self._jobDict = {}
+        self.get_jobs()
 
     @property
     def url(self):
