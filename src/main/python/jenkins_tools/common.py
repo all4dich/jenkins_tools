@@ -193,7 +193,7 @@ class Jenkins:
             logger.error(build_del_req.text)
             raise Exception(f"Deleting {job_name} #{build_number} has been failed")
         else:
-            logger.info(f"Deleting {job_name} #{build_number} is done")
+            logger.warnin(f"Deleting {job_name} #{build_number} is done")
 
     def update_job_config(self, job_name, data=None):
         """
