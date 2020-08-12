@@ -15,7 +15,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 _build_fields = "number,url,result,timestamp"
-_job_tree = f"&tree=jobs[_class,name,url,displayName,fullDisplayName,fullName,firstBuild[{_build_fields}]," \
+_job_tree = f"&tree=jobs[_class,name,url,displayName,fullDisplayName,fullName,buildable,firstBuild[{_build_fields}]," \
             f"lastBuild[{_build_fields}]]"
 
 
