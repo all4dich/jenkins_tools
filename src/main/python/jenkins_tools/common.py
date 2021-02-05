@@ -21,6 +21,8 @@ _job_tree = f"&tree=jobs[_class,name,url,displayName,fullDisplayName,fullName,bu
 
 class Jenkins:
     def __init__(self, url, username, password):
+        if url[-1] == "/":
+            url = url[:-1]
         self._url = url
         self._username = username
         self._password = password
@@ -231,6 +233,26 @@ class Jenkins:
                 logger.error(f"Create a job {job_name}: FAILED")
                 logger.error(f"{create_job.text}")
                 raise Exception(f"Create a job {job_name}: FAILED")
+
+    def create_agent(self, agent_name, agent_type, data):
+        # create_url = f"{self._url}/computer/doCreateItem?name={agent_name}&type={agent_type}"
+        create_url = f"{self._url}/computer/doCreateItem"
+        agent_url = f"{self._url}/computer/{agent_name}"
+        headers = self._set_header({'Content-Type': 'application/x-www-form-urlencoded'})
+        logger.info(f"Create an agent {agent_name} with the url {create_url}")
+        # create_job = requests.post(create_url, auth=self._auth, data=data, headers=headers)
+        if agent_name is not None and agent_type is not None:
+            data['name'] = agent_name
+            data['type'] = agent_type
+        create_job = requests.post(create_url, auth=self._auth, data=data, headers=headers)
+        if create_job.status_code == 200:
+            logger.info(f"Create a agent {agent_name}: SUCCESS")
+            logger.info(f"Job url: {agent_url}")
+        else:
+            logger.error(f"Create a agent {agent_name}: FAILED")
+            logger.error(f"{create_job.text}")
+            logger.error(f"{create_job.status_code}")
+            raise Exception(f"Create a agent {agent_name}: FAILED")
 
     def delete_job(self, job_name):
         if job_name in self._jobDict:
