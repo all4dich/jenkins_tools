@@ -1,13 +1,14 @@
 import logging
 import re
 from datetime import datetime
-import pymongo
+# import pymongo
 
 from multiprocessing import Pool, Manager
 
 from jenkins_tools.common import Jenkins
 import argparse
 from lxml import etree
+import pandas as pd
 
 logger = logging.getLogger()
 COMMAND_LAUNCHER = "hudson.slaves.CommandLauncher"
@@ -42,6 +43,7 @@ def get_agent_launcher(agent_config: etree.Element):
 manager = Manager()
 agent_candidates = manager.list()
 agent_info = manager.list()
+agent_info_group_by = manager.dict()
 
 
 def handle_agent(agent):
@@ -55,22 +57,25 @@ def handle_agent(agent):
         host = agent_command.split(" ")[-1]
     agent_info.append({"name": name, "host": host, "launcher_class": launcher_class})
 
+
 if __name__ == "__main__":
+    output_file = "~/output.xlsx"
+    writer = pd.ExcelWriter(output_file)
     agents = get_agents()
     agent_ci = list(filter(lambda agent: re.compile(f"swfarm-.*").match(agent['displayName']), agents))
     agent_no_ci = list(filter(lambda agent: not re.compile(f"swfarm-.*").match(agent['displayName']), agents))
-#    with Pool() as pool:
-#        for i in range(4):
-#            pool.apply_async(handle_agent, args=(agent_candidates, agent_info))
-#        pool.close()
-#        pool.join()
     with Pool() as pool:
-        pool.map(handle_agent, agent_ci)
-    agent_info2 = {}
-    for each_agent in agent_info:
-        if each_agent['host'] in agent_info2:
-            agent_info2[each_agent['host']].append(each_agent)
-        else:
-            agent_info2[each_agent['host']] = [each_agent]
-    for a in agent_info2:
-        print(a, agent_info2[a])
+        r = pool.map(handle_agent, agent_ci)
+        print(len(agent_info))
+        b = []
+        for each_agent in agent_info:
+            if each_agent['host'] in agent_info_group_by:
+                agent_info_group_by[each_agent['host']].append(each_agent)
+            else:
+                agent_info_group_by[each_agent['host']] = [each_agent]
+            b.append([each_agent['name'], each_agent['host'], each_agent['launcher_class']])
+        df = pd.DataFrame(b, columns=["name", "host", "launcher_class"])
+        df.to_excel(excel_writer=writer)
+        writer.close()
+        for a in agent_info_group_by:
+            print(a, agent_info_group_by[a])
