@@ -9,6 +9,7 @@ from jenkins_tools.common import Jenkins
 import argparse
 from lxml import etree
 import pandas as pd
+from paramiko import SSHClient, AutoAddPolicy
 
 logger = logging.getLogger()
 COMMAND_LAUNCHER = "hudson.slaves.CommandLauncher"
@@ -18,6 +19,8 @@ arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("--url", required=True)
 arg_parser.add_argument("--username", required=True)
 arg_parser.add_argument("--password", required=True)
+arg_parser.add_argument("--list-output", help="Excel file")
+
 args = arg_parser.parse_args()
 url = args.url
 username = args.username
@@ -47,6 +50,8 @@ agent_info_group_by = manager.dict()
 
 
 def handle_agent(agent):
+    ssh_client = SSHClient()
+    ssh_client.set_missing_host_key_policy(AutoAddPolicy)
     name = agent['displayName']
     config = j.get_agent_config(name)
     launcher_class, launcher = get_agent_launcher(config)
@@ -55,11 +60,24 @@ def handle_agent(agent):
     elif launcher_class == COMMAND_LAUNCHER:
         agent_command = launcher.find("agentCommand").text
         host = agent_command.split(" ")[-1]
-    agent_info.append({"name": name, "host": host, "launcher_class": launcher_class})
+    ssh_client.connect(host, port=22, username="gatekeeper.tvsw", password="sdetgatekeeper1!")
+    # session = client.get_transport().open_session()
+    _, stdout, _ = ssh_client.exec_command("nproc")
+    no_of_threads = stdout.read().decode("utf8").strip()
+    _, stdout2, _ = ssh_client.exec_command("free -h|grep Mem|awk  '{print $2}'g")
+    mem_size = stdout2.read().decode("utf8").strip()
+    labels = []
+    for each_label in agent['assignedLabels']:
+        labels.append(each_label['name'])
+    label_string = ",".join(sorted(labels))
+    agent_info.append(
+        {"name": name, "host": host, "launcher_class": launcher_class, "no_of_threads": no_of_threads, "mem": mem_size,
+         "labels": label_string})
+    ssh_client.close()
 
 
 if __name__ == "__main__":
-    output_file = "~/output.xlsx"
+    output_file = args.list_output
     writer = pd.ExcelWriter(output_file)
     agents = get_agents()
     agent_ci = list(filter(lambda agent: re.compile(f"swfarm-.*").match(agent['displayName']), agents))
@@ -73,8 +91,9 @@ if __name__ == "__main__":
                 agent_info_group_by[each_agent['host']].append(each_agent)
             else:
                 agent_info_group_by[each_agent['host']] = [each_agent]
-            b.append([each_agent['name'], each_agent['host'], each_agent['launcher_class']])
-        df = pd.DataFrame(b, columns=["name", "host", "launcher_class"])
+            b.append([each_agent['name'], each_agent['host'], each_agent['launcher_class'], each_agent['no_of_threads'],
+                      each_agent['mem'], each_agent['labels']])
+        df = pd.DataFrame(b, columns=["name", "host", "launcher_class", "no_of_threads", "mem", "labels"])
         df.to_excel(excel_writer=writer)
         writer.close()
         for a in agent_info_group_by:
