@@ -2,6 +2,7 @@ import json
 import logging
 import requests
 from jenkins_tools.types import job_classes, agent_classes
+from lxml import etree
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -121,6 +122,16 @@ class Jenkins:
             else:
                 # Return an object's detailed information
                 return res_json
+
+    def get_agent_config(self, agent_name):
+        agent_url = f"{self._url}/computer/{agent_name}/"
+        agent_config_url = f"{agent_url}config.xml"
+        get_config_res = requests.get(agent_config_url, auth=self._auth)
+        if get_config_res.status_code == 200:
+            agent_config = etree.fromstring(get_config_res.text.encode("utf8"))
+            return agent_config
+        else:
+            return None
 
     def get_agents(self):
         """
