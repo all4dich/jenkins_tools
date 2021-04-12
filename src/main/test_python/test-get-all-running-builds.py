@@ -1,28 +1,36 @@
 import logging
-import re
 from datetime import datetime
-import pymongo
+import argparse
+import pandas as pd
 
-logger = logging.getLogger()
-
+logging.getLogger().setLevel("ERROR")
 from jenkins_tools.common import Jenkins
 from jenkins_tools.types import JobClasses
 import jenkins_tools.types as types
 
-j = Jenkins("http://localhost:7070", "admin", "admin")
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument("--url", required=True)
+arg_parser.add_argument("--username", required=True)
+arg_parser.add_argument("--password", required=True)
+args = arg_parser.parse_args()
+jenkins_url = args.url
+username = args.username
+password = args.password
+j = Jenkins(jenkins_url, username, password)
 if j.check_connection():
-    logger.info("Success")
+    logging.info("Success")
 else:
-    logger.error("Fail")
-logger.info(datetime.now())
-logger.info("start")
-logger.info("end")
-logger.info(datetime.now())
+    logging.error("Fail")
+logging.info(datetime.now())
+logging.info("start")
+logging.info("end")
+logging.info(datetime.now())
 
 full_url = f"{j.url}/computer/api/json?pretty=true&tree=computer[displayName,executors[idle,number,currentExecutable[fullDisplayName]]]"
 agents = j.get_object(url=full_url, api_suffix="")['computer']
 running_builds = []
 idle_executors = []
+idle_hosts = []
 for each_agent in agents:
     agent_name = each_agent['displayName']
     executors = each_agent['executors']
@@ -35,9 +43,11 @@ for each_agent in agents:
                 "build": each_executor['currentExecutable']['fullDisplayName']
             })
         else:
-            idle_executors.append(each_executor)
+            idle_executors.append([agent_name, each_executor])
+            idle_hosts.append(agent_name)
 
 for each_build in running_builds:
-    print(each_build)
-print(len(running_builds))
-print(idle_executors)
+    print(each_build['build'], each_build['agent'])
+idle_hosts = sorted(set(idle_hosts))
+for each_agent in idle_hosts:
+    print(each_agent)
