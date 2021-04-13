@@ -337,3 +337,30 @@ class Jenkins:
                 causes.append(each_cause)
         logger.debug(causes)
         return causes
+
+    def get_running_builds(self):
+        logger.debug(f"Get a list of running builds on Jenkins {self.url}")
+        computer_fields = "displayName,idle,offline,numExecutors"
+        executor_fields = "idle,number,currentExecutable[fullDisplayName]"
+        tree_data = f"tree=computer[{computer_fields},executors[{executor_fields}]]"
+        get_url = self.url + "/computer/"
+        res = self.get_object(get_url, tree=tree_data)
+        agents = res["computer"]
+        running_builds = []
+        idle_executors = []
+        idle_hosts = []
+        for each_agent in agents:
+            agent_name = each_agent["displayName"]
+            executors = each_agent["executors"]
+            for each_executor in executors:
+                idle = each_executor['idle']
+                if not idle:
+                    running_builds.append({
+                        "agent": agent_name,
+                        "number": each_executor['number'],
+                        "build": each_executor['currentExecutable']['fullDisplayName']
+                    })
+                else:
+                    idle_executors.append([agent_name, each_executor])
+                    idle_hosts.append(agent_name)
+        return running_builds
