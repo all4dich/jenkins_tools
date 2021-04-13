@@ -26,7 +26,8 @@ logging.info("start")
 logging.info("end")
 logging.info(datetime.now())
 
-full_url = f"{j.url}/computer/api/json?pretty=true&tree=computer[displayName,executors[idle,number,currentExecutable[fullDisplayName]]]"
+full_url = f"{j.url}/computer/api/json?pretty=true&tree=computer[displayName,idle,offline,numExecutors," \
+           f"executors[idle,number,currentExecutable[fullDisplayName]]]"
 agents = j.get_object(url=full_url, api_suffix="")['computer']
 running_builds = []
 idle_executors = []
