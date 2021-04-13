@@ -341,7 +341,7 @@ class Jenkins:
     def get_running_builds(self):
         logger.debug(f"Get a list of running builds on Jenkins {self.url}")
         computer_fields = "displayName,idle,offline,numExecutors"
-        executor_fields = "idle,number,currentExecutable[fullDisplayName]"
+        executor_fields = "idle,number,currentExecutable[fullDisplayName,number,url]"
         tree_data = f"tree=computer[{computer_fields},executors[{executor_fields}]]"
         get_url = self.url + "/computer/"
         res = self.get_object(get_url, tree=tree_data)
@@ -349,6 +349,7 @@ class Jenkins:
         running_builds = []
         idle_executors = []
         idle_hosts = []
+        busy_hosts = []
         for each_agent in agents:
             agent_name = each_agent["displayName"]
             executors = each_agent["executors"]
@@ -357,10 +358,13 @@ class Jenkins:
                 if not idle:
                     running_builds.append({
                         "agent": agent_name,
-                        "number": each_executor['number'],
-                        "build": each_executor['currentExecutable']['fullDisplayName']
+                        "executor_number": each_executor['number'],
+                        "build_number": each_executor['currentExecutable']['number'],
+                        "build_name": each_executor['currentExecutable']['fullDisplayName'],
+                        "build_url": each_executor['currentExecutable']['url']
                     })
+                    busy_hosts.append(agent_name)
                 else:
                     idle_executors.append([agent_name, each_executor])
                     idle_hosts.append(agent_name)
-        return running_builds
+        return {"running_builds": running_builds, "busy_hosts": busy_hosts, "idle_hosts": idle_hosts}
