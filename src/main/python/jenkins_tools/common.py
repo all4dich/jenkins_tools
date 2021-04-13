@@ -368,3 +368,33 @@ class Jenkins:
                     idle_executors.append([agent_name, each_executor])
                     idle_hosts.append(agent_name)
         return {"running_builds": running_builds, "busy_hosts": busy_hosts, "idle_hosts": idle_hosts}
+
+    def get_git_build_data(self, job_name, build_number):
+        logger.debug(f"Get git build data from {job_name} #{build_number}")
+        job_obj = self.get_job(job_name)
+        # https://cerberus.lge.com/jenkins/view/kcl4tv-official/job/starfish-kcl4tv-official-e60/50/api/json?pretty=true
+        build_url = job_obj['url'] + f"{build_number}/"
+        git_build_data_tree = "&tree=actions[_class,causes[userName],remoteUrls,buildsByBranchName[*[*]]]"
+        logger.debug(f"Build url: {build_url}, Build parameter tree: {git_build_data_tree}")
+        git_build_data = self.get_object(build_url, tree=git_build_data_tree)
+        target_class_name = "hudson.plugins.git.util.BuildData"
+        cause_class_name = "hudson.model.CauseAction"
+        git_build_data_ele = list(
+            filter(lambda each_action: "_class" in each_action and each_action["_class"] == target_class_name,
+                   git_build_data["actions"]))
+        build_causes_ele = list(
+            filter(lambda each_action: "_class" in each_action and each_action["_class"] == cause_class_name,
+                   git_build_data["actions"]))
+        branch_info = git_build_data_ele[0]['buildsByBranchName']
+        build_cause = build_causes_ele[0]['causes'][0]
+        build_user = ""
+        if "userName" in build_cause:
+            build_user = build_cause['userName']
+
+        branch_name = ""
+        branch_sha1 = ""
+        for each_key in branch_info.keys():
+            branch_name = each_key.replace("origin/", "")
+            branch_sha1 = branch_info[each_key]['revision']['SHA1']
+        return {"branch_name": branch_name, "branch_commit": branch_sha1, "raw_data": git_build_data_ele[0],
+                "requestor": build_user}
