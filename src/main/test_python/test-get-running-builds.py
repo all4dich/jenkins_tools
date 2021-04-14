@@ -9,6 +9,8 @@ from functools import partial
 logging.getLogger().setLevel("ERROR")
 from jenkins_tools.common import Jenkins
 
+from pymongo import MongoClient
+
 
 def get_build_info(jenkins_url, username, password, each_build):
     j = Jenkins(jenkins_url, username, password)
@@ -74,6 +76,12 @@ if __name__ == "__main__":
     arg_parser.add_argument("--url", required=True)
     arg_parser.add_argument("--username", required=True)
     arg_parser.add_argument("--password", required=True)
+    arg_parser.add_argument("--dbhost", required=True)
+    arg_parser.add_argument("--dbport", required=True)
+    arg_parser.add_argument("--dbname", required=True)
+    arg_parser.add_argument("--dbcollection", required=True)
+    arg_parser.add_argument("--dbusername", required=True)
+    arg_parser.add_argument("--dbpassword", required=True)
     args = arg_parser.parse_args()
     jenkins_url = args.url
     username = args.username
@@ -83,9 +91,27 @@ if __name__ == "__main__":
     running_builds = jenkins_connector.get_running_builds()["running_builds"]
     output_table_header = ["Job", "Build Number", "Chip", "Type", "Branch", "Owner", "Build Url"]
     p = Pool()
+    db_client = MongoClient(host=args.dbhost, port=int(args.dbport), username=args.dbusername, password=args.dbpassword,
+                            authSource=args.dbname)
+    db = db_client[args.dbname]
+    db_collection = db[args.dbcollection]
     output_table = p.map(partial(get_build_info, jenkins_url, username, password), running_builds)
+    for each_build in output_table:
+        db_collection.insert_one({
+            "job": each_build[0],
+            "number": each_build[1],
+            "chip": each_build[2],
+            "type": each_build[3],
+            "branch": each_build[4],
+            "owner": each_build[5],
+            "url": each_build[6],
+            "time": start,
+            "time_epoch": start.timestamp(),
+            "zone": start.tzname()
+        })
     df = pd.DataFrame(data=output_table, columns=output_table_header)
     df2 = df.style.set_properties(**{'text-align': 'left'})
     print(df.to_string())
     end = datetime.now().astimezone()
     print(f"Time to complete: {end - start}")
+    print(start)

@@ -5,7 +5,7 @@ from jenkins_tools.types import job_classes, agent_classes
 from lxml import etree
 
 logger = logging.getLogger()
-#logger.setLevel(logging.INFO)
+# logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter('%(levelname)7s:%(filename)s:%(lineno)d:%(funcName)10s: %(message)s')
 
@@ -373,7 +373,6 @@ class Jenkins:
     def get_git_build_data(self, job_name, build_number):
         logger.debug(f"Get git build data from {job_name} #{build_number}")
         job_obj = self.get_job(job_name)
-        # https://cerberus.lge.com/jenkins/view/kcl4tv-official/job/starfish-kcl4tv-official-e60/50/api/json?pretty=true
         build_url = job_obj['url'] + f"{build_number}/"
         git_build_data_tree = "&tree=actions[_class,causes[userName],remoteUrls,buildsByBranchName[*[*]]]"
         logger.debug(f"Build url: {build_url}, Build parameter tree: {git_build_data_tree}")
