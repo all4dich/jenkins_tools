@@ -19,6 +19,7 @@ def get_build_info(jenkins_url, username, password, each_build):
     build_number = build_name[1]
     # Common fields
     #  - BRANCH, PROJECT, OWNER, BUILD_TYPE, CHIP, HOST
+    #  - Build job, Build Number, Chip, Type, Branch, Owner, Url
     output = []
     if re.compile(r"starfish-.*-(verify|integrate)-.*").match(build_job):
         params = j.get_build_parameters(build_job, build_number)
@@ -28,14 +29,18 @@ def get_build_info(jenkins_url, username, password, each_build):
         change_owner_email = params['GERRIT_CHANGE_OWNER_EMAIL']
         build_type = build_job.split("-")[2]
         chip_name = build_job.split("-")[-1]
-        output = [build_job, build_number, git_branch, change_owner, build_url]
+        output = [build_job, build_number, chip_name, build_type, git_branch, change_owner, build_url]
     elif re.compile(r"starfish-.*-official-.*").match(build_job):
         r_official = j.get_git_build_data(build_job, build_number)
         git_branch = r_official['branch_name']
         change_owner = r_official['requestor']
-        output = [build_job, build_number, git_branch, change_owner, build_url]
+        build_type = build_job.split("-")[2]
+        chip_name = build_job.split("-")[-1]
+        output = [build_job, build_number, chip_name, build_type, git_branch, change_owner, build_url]
     elif re.compile(r"clean-engineering-starfish-.*-build").match(build_job):
         params = j.get_build_parameters(build_job, build_number)
+        build_type = build_job.split("-")[0]
+        chip_name = build_job.split("-")[-2]
         if 'GERRIT_BRANCH' in params.keys():
             git_branch = params['GERRIT_BRANCH']
             change_owner = params['GERRIT_CHANGE_OWNER_NAME']
@@ -58,9 +63,9 @@ def get_build_info(jenkins_url, username, password, each_build):
                 git_branch = "clean-build"
                 change_owner = "clean-build"
             change_owner = ",".join(change_owner)
-        output = [build_job, build_number, git_branch, change_owner, build_url]
+        output = [build_job, build_number, chip_name, build_type, git_branch, change_owner, build_url]
     else:
-        output = [build_job, build_number, "", "", build_url]
+        output = [build_job, build_number, "", "", "", "", build_url]
     return output
 
 
@@ -76,11 +81,9 @@ if __name__ == "__main__":
     jenkins_connector = Jenkins(jenkins_url, username, password)
     start = datetime.now().astimezone()
     running_builds = jenkins_connector.get_running_builds()["running_builds"]
-    output_table_header = ["Job", "Build Number", "Branch", "Owner", "Build Url"]
-    # output_table = []
+    output_table_header = ["Job", "Build Number", "Chip", "Type", "Branch", "Owner", "Build Url"]
     p = Pool()
-    r = p.map(partial(get_build_info, jenkins_url, username, password), running_builds)
-    output_table = r
+    output_table = p.map(partial(get_build_info, jenkins_url, username, password), running_builds)
     df = pd.DataFrame(data=output_table, columns=output_table_header)
     df2 = df.style.set_properties(**{'text-align': 'left'})
     print(df.to_string())
