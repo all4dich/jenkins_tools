@@ -5,7 +5,7 @@ from jenkins_tools.types import job_classes, agent_classes
 from lxml import etree
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+#logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter('%(levelname)7s:%(filename)s:%(lineno)d:%(funcName)10s: %(message)s')
 
