@@ -2,6 +2,7 @@ import logging
 import argparse
 from datetime import datetime
 import re
+import pandas as pd
 
 logging.getLogger().setLevel("ERROR")
 from jenkins_tools.common import Jenkins
@@ -18,8 +19,12 @@ if __name__ == "__main__":
     j = Jenkins(jenkins_url, username, password)
     start = datetime.now().astimezone()
     running_builds = j.get_running_builds()["running_builds"]
+    output_table_header = ["Job", "Build Number", "Branch", "Owner", "Builjd Url"]
+    output_table = []
+
     for each_build in running_builds:
-        build_name = each_build['build_name'].split(" #")
+        build_name_str = each_build['build_name']
+        build_name = build_name_str.split(" #")
         build_url = each_build['build_url']
         build_job = build_name[0]
         build_number = build_name[1]
@@ -33,14 +38,39 @@ if __name__ == "__main__":
             change_owner_email = params['GERRIT_CHANGE_OWNER_EMAIL']
             build_type = build_job.split("-")[2]
             chip_name = build_job.split("-")[-1]
-            print(build_name, git_branch, change_owner)
+            output_table.append([build_job, build_number, git_branch, change_owner, build_url])
         elif re.compile(r"starfish-.*-official-.*").match(build_job):
             r_official = j.get_git_build_data(build_job, build_number)
             git_branch = r_official['branch_name']
             build_user = r_official['requestor']
-            print(build_name, git_branch, build_user)
+            output_table.append([build_job, build_number, git_branch, change_owner, build_url])
         elif re.compile(r"clean-engineering-starfish-.*-build").match(build_job):
-            r = j.get_build_parameters(build_job, build_number)
-
+            params = j.get_build_parameters(build_job, build_number)
+            if 'GERRIT_BRANCH' in params.keys():
+                git_branch = params['GERRIT_BRANCH']
+                change_owner = params['GERRIT_CHANGE_OWNER_NAME']
+            else:
+                build_causes = j.get_build_causes(build_job, build_number)
+                change_owner = []
+                for each_cause in build_causes:
+                    if each_cause['_class'] == 'hudson.model.Cause$UpstreamCause':
+                        upstream_project = each_cause['upstreamProject']
+                        upstream_build_number = each_cause['upstreamBuild']
+                    elif each_cause['_class'] == "hudson.model.Cause$UserIdCause":
+                        change_owner.append(each_cause['userName'])
+                if upstream_project and upstream_build_number:
+                    upstream_causes = j.get_build_causes(upstream_project, upstream_build_number)
+                    for upstream_cause in upstream_causes:
+                        if upstream_cause['_class'] == "hudson.model.Cause$UserIdCause":
+                            change_owner.append(upstream_cause['userName'])
+                    git_branch = params['build_starfish_commit']
+                else:
+                    git_branch = "clean-build"
+                    change_owner = "clean-build"
+                change_owner = ",".join(change_owner)
+            output_table.append([build_job, build_number, git_branch, change_owner, build_url])
+    df = pd.DataFrame(data=output_table, columns=output_table_header)
+    df2 = df.style.set_properties(**{'text-align': 'left'})
+    print(df.to_string())
     end = datetime.now().astimezone()
     print(f"Time to complete: {end - start}")

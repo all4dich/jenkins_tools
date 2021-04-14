@@ -314,6 +314,7 @@ class Jenkins:
             for each_param in action_params:
                 params[each_param['name']] = each_param['value']
         logger.debug(f"Number of parameters: {len(params)}")
+        params['url'] = build_url
         return params
 
     def get_build_causes(self, job_name, number):
