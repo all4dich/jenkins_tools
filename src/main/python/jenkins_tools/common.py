@@ -5,7 +5,7 @@ from jenkins_tools.types import job_classes, agent_classes
 from lxml import etree
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+# logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter('%(levelname)7s:%(filename)s:%(lineno)d:%(funcName)10s: %(message)s')
 
@@ -314,6 +314,7 @@ class Jenkins:
             for each_param in action_params:
                 params[each_param['name']] = each_param['value']
         logger.debug(f"Number of parameters: {len(params)}")
+        params['url'] = build_url
         return params
 
     def get_build_causes(self, job_name, number):
@@ -337,3 +338,63 @@ class Jenkins:
                 causes.append(each_cause)
         logger.debug(causes)
         return causes
+
+    def get_running_builds(self):
+        logger.debug(f"Get a list of running builds on Jenkins {self.url}")
+        computer_fields = "displayName,idle,offline,numExecutors"
+        executor_fields = "idle,number,currentExecutable[fullDisplayName,number,url]"
+        tree_data = f"tree=computer[{computer_fields},executors[{executor_fields}]]"
+        get_url = self.url + "/computer/"
+        res = self.get_object(get_url, tree=tree_data)
+        agents = res["computer"]
+        running_builds = []
+        idle_executors = []
+        idle_hosts = []
+        busy_hosts = []
+        for each_agent in agents:
+            agent_name = each_agent["displayName"]
+            executors = each_agent["executors"]
+            for each_executor in executors:
+                idle = each_executor['idle']
+                if not idle:
+                    running_builds.append({
+                        "agent": agent_name,
+                        "executor_number": each_executor['number'],
+                        "build_number": each_executor['currentExecutable']['number'],
+                        "build_name": each_executor['currentExecutable']['fullDisplayName'],
+                        "build_url": each_executor['currentExecutable']['url']
+                    })
+                    busy_hosts.append(agent_name)
+                else:
+                    idle_executors.append([agent_name, each_executor])
+                    idle_hosts.append(agent_name)
+        return {"running_builds": running_builds, "busy_hosts": busy_hosts, "idle_hosts": idle_hosts}
+
+    def get_git_build_data(self, job_name, build_number):
+        logger.debug(f"Get git build data from {job_name} #{build_number}")
+        job_obj = self.get_job(job_name)
+        build_url = job_obj['url'] + f"{build_number}/"
+        git_build_data_tree = "&tree=actions[_class,causes[userName],remoteUrls,buildsByBranchName[*[*]]]"
+        logger.debug(f"Build url: {build_url}, Build parameter tree: {git_build_data_tree}")
+        git_build_data = self.get_object(build_url, tree=git_build_data_tree)
+        target_class_name = "hudson.plugins.git.util.BuildData"
+        cause_class_name = "hudson.model.CauseAction"
+        git_build_data_ele = list(
+            filter(lambda each_action: "_class" in each_action and each_action["_class"] == target_class_name,
+                   git_build_data["actions"]))
+        build_causes_ele = list(
+            filter(lambda each_action: "_class" in each_action and each_action["_class"] == cause_class_name,
+                   git_build_data["actions"]))
+        branch_info = git_build_data_ele[0]['buildsByBranchName']
+        build_cause = build_causes_ele[0]['causes'][0]
+        build_user = ""
+        if "userName" in build_cause:
+            build_user = build_cause['userName']
+
+        branch_name = ""
+        branch_sha1 = ""
+        for each_key in branch_info.keys():
+            branch_name = each_key.replace("origin/", "")
+            branch_sha1 = branch_info[each_key]['revision']['SHA1']
+        return {"branch_name": branch_name, "branch_commit": branch_sha1, "raw_data": git_build_data_ele[0],
+                "requestor": build_user}
