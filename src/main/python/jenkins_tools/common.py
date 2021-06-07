@@ -402,25 +402,8 @@ class Jenkins:
     def get_in_queue_builds(self):
         logger.debug(f"Get a list of running builds on Jenkins {self.url}")
         #tree_data = f"tree=items[*[*]]"
-        tree_data = f"tree=items[_class,id,inQueueSince,task[*],url,why,timestamp]"
+        tree_data = f"tree=items[_class,actions[*],id,inQueueSince,task[*],url,why,timestamp]"
         get_url = self.url + "/queue/"
         res = self.get_object(get_url, tree=tree_data)
         queued_items = res["items"]
-        for each_item in queued_items:
-            item_class = each_item["_class"]
-            item_id = each_item["id"]
-            item_since = each_item["inQueueSince"]
-            item_task = each_item["task"]
-            try:
-                job_name = item_task["name"]
-            except:
-                job_name = "N/A"
-            job_url = item_task["url"] 
-            job_class = item_task["_class"]
-            item_url  = each_item["url"]
-            item_reason = each_item["why"]
-            try:
-                print("INFO:", job_name, job_url, item_reason, item_id, item_since, each_item['timestamp'])
-            except:
-                print("ERROR:", item_class, job_name)
-        
+        return queued_items
