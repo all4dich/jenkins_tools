@@ -398,3 +398,12 @@ class Jenkins:
             branch_sha1 = branch_info[each_key]['revision']['SHA1']
         return {"branch_name": branch_name, "branch_commit": branch_sha1, "raw_data": git_build_data_ele[0],
                 "requestor": build_user}
+
+    def get_in_queue_builds(self):
+        logger.debug(f"Get a list of running builds on Jenkins {self.url}")
+        #tree_data = f"tree=items[*[*]]"
+        tree_data = f"tree=items[_class,actions[*],id,inQueueSince,task[*],url,why,timestamp]"
+        get_url = self.url + "/queue/"
+        res = self.get_object(get_url, tree=tree_data)
+        queued_items = res["items"]
+        return queued_items
