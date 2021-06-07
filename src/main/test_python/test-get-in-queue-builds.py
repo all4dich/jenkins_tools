@@ -13,13 +13,18 @@ import mysql.connector
 def get_in_queue_info_table_description(table_name):
     table_description = f"CREATE TABLE `{table_name}` (" \
                         "  `job` VARCHAR(200) NOT NULL," \
+                        "  `job_type` VARCHAR(200) NOT NULL," \
+                        "  `job_branch` VARCHAR(200) NOT NULL," \
+                        "  `job_chip` VARCHAR(200) NOT NULL," \
+                        "  `job_distro` VARCHAR(200) NOT NULL," \
                         "  `job_class` VARCHAR(200) NOT NULL," \
                         "  `job_url` VARCHAR(200) NOT NULL," \
                         "  `why` VARCHAR(200) NOT NULL," \
                         "  `url` VARCHAR(200) NOT NULL," \
-                        "  `since_timestamp` TIMESTAMP NOT NULL," \
-                        "  `since` INT(4)," \
-                        "  `current` INT(4)," \
+                        "  `since_date` DATETIME NOT NULL," \
+                        "  `since_timestamp` INT(4)," \
+                        "  `curr_date` DATETIME NOT NULL," \
+                        "  `curr_timestamp` INT(4)," \
                         "  `inqueue` INT(4)" \
                         ")"
     return table_description
@@ -28,11 +33,15 @@ def get_in_queue_info_table_description(table_name):
 def get_table_insert_description(table_name):
     insert_description = f"INSERT INTO {table_name} (" \
                          "  job, " \
+                         "  job_type, " \
+                         "  job_branch, " \
+                         "  job_chip, " \
+                         "  job_distro, " \
                          "  job_class, " \
                          "  job_url, " \
                          "  why, " \
                          "  url, " \
-                         "  since_timestamp, since, current, inqueue ) VALUES  (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                         "  since_date, since_timestamp, curr_date, curr_timestamp, inqueue ) VALUES  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
     return insert_description
 
 
@@ -53,7 +62,7 @@ if __name__ == "__main__":
     password = args.password
     print("\n\n\n")
     jenkins_connector = Jenkins(jenkins_url, username, password)
-    start = datetime.now().astimezone()
+    current_time = datetime.now().astimezone()
     queued_items = jenkins_connector.get_in_queue_builds()
     cnx = mysql.connector.connect(user=args.dbusername,
                                   password=args.dbpassword,
@@ -93,22 +102,45 @@ if __name__ == "__main__":
                 job_name = item_task["name"]
             except:
                 job_name = "N/A"
+            job_name_elements = job_name.split("-")
+            job_branch = "others"
+            job_type = "others"
+            job_chip = "others"
+            job_distro = "others"
+            if job_name_elements[0] == "starfish":
+                if len(job_name_elements) > 3:
+                    job_chip = job_name_elements[3]
+                    job_type = job_name_elements[2]
+                    job_branch = job_name_elements[1]
+                    job_distro = job_name_elements[0]
+                else:
+                    job_type = "others"
+            elif job_name_elements[0] == "clean":
+                job_chip = "clean"
+                job_type = "clean"
+                job_branch = "clean"
+                if len(job_name_elements) == 5:
+                    job_chip = job_name_elements[3]
+                    job_distro = job_name_elements[2]
             job_url = item_task["url"]
             job_class = item_task["_class"]
             item_url = each_item["url"]
             item_full_url = jenkins_connector.url + "/" + item_url
             item_reason = each_item["why"]
-            curr_timestamp = int(start.timestamp())
+            curr_timestamp = int(current_time.timestamp())
             in_queue_time = int(curr_timestamp - item_since)
             item_since_in_seconds = int(item_since)
             item_since_datetime = datetime.fromtimestamp(item_since).astimezone()
             query_data = (
-                job_name, item_class, job_url, item_reason, item_url, item_since_datetime, item_since_in_seconds, curr_timestamp, in_queue_time)
+                job_name, job_type, job_branch, job_chip, job_distro, item_class, job_url, item_reason, item_url, 
+                item_since_datetime, item_since_in_seconds, 
+                current_time, curr_timestamp, 
+                in_queue_time)
             cursor.execute(get_table_insert_description(args.dbtable), query_data)
     except mysql.connector.errors.ProgrammingError as err:
-        print(err)
+        print(f"ERROR: {err}")
     finally:
         cnx.commit()
         cnx.close()
     end = datetime.now().astimezone()
-    print(end - start)
+    print("INFO:", "Elapsed time = ", end - current_time)
