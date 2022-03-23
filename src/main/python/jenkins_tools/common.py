@@ -4,16 +4,16 @@ import requests
 from jenkins_tools.types import job_classes, agent_classes
 from lxml import etree
 
-logger = logging.getLogger()
-# logger.setLevel(logging.INFO)
+#logging = logging.getLogger()
+# logging.setLevel(logging.INFO)
 
-formatter = logging.Formatter('%(levelname)7s:%(filename)s:%(lineno)d:%(funcName)10s: %(message)s')
+#formatter = logging.Formatter('%(levelname)7s:%(filename)s:%(lineno)d:%(funcName)10s: %(message)s')
 
-ch = logging.StreamHandler()
+#ch = logging.StreamHandler()
 # ch.setLevel(logging.INFO)
-ch.setFormatter(formatter)
+#ch.setFormatter(formatter)
 
-logger.addHandler(ch)
+#logging.addHandler(ch)
 
 _build_fields = "number,url,result,timestamp"
 _job_tree = f"&tree=jobs[_class,name,url,displayName,fullDisplayName,fullName,buildable,firstBuild[{_build_fields}]," \
@@ -50,7 +50,7 @@ class Jenkins:
     def _set_header(self, headers={}):
         # Get Crumb data
         crumb_url = f"{self._url}/crumbIssuer/api/json"
-        logger.info(f"Getting crumb information from {crumb_url}")
+        logging.info(f"Getting crumb information from {crumb_url}")
         crumb_res = requests.get(url=crumb_url, auth=self._auth)
         if crumb_res.status_code == 200:
             crumb_json = json.loads(crumb_res.text)
@@ -88,13 +88,13 @@ class Jenkins:
         :return: True if a connection is OK or False for other cases
         """
         jenkins_api_url = f"{self._url}/api/json?pretty=true{tree}"
-        logger.info(f"Call {jenkins_api_url}")
+        logging.info(f"Call {jenkins_api_url}")
         res = requests.get(jenkins_api_url, auth=self._auth)
-        logger.info(f"Response code = {res.status_code}")
+        logging.info(f"Response code = {res.status_code}")
         if res.status_code == 200:
             res_json = json.loads(res.text)
             self._jobs = res_json['jobs']
-            logger.info(f"You can connect to a Jenkins {self._url} with current authentication information")
+            logging.info(f"You can connect to a Jenkins {self._url} with current authentication information")
             return True
         else:
             return False
@@ -109,7 +109,7 @@ class Jenkins:
         if api_suffix == "":
             tree = ""
         api_url = f"{url}{api_suffix}{tree}"
-        logger.debug(f"API url to be called: {api_url}")
+        logging.debug(f"API url to be called: {api_url}")
         res = requests.get(api_url, auth=self._auth)
         if res.status_code != 200:
             raise Exception(f"Call url = {api_url}, Error code = {res.status_code}. Check your request")
@@ -199,14 +199,14 @@ class Jenkins:
         job_obj = self.get_job(job_name)
         job_url = job_obj['url']
         delete_build_url = f"{job_url}/{build_number}/doDelete"
-        logger.info(f"Delete {job_name} #{build_number} build on {self.url}")
-        logger.debug(f"Delete url: {delete_build_url}")
+        logging.info(f"Delete {job_name} #{build_number} build on {self.url}")
+        logging.debug(f"Delete url: {delete_build_url}")
         build_del_req = requests.post(delete_build_url, auth=self._auth)
         if build_del_req.status_code != 200:
-            logger.error(build_del_req.text)
+            logging.error(build_del_req.text)
             raise Exception(f"Deleting {job_name} #{build_number} has been failed")
         else:
-            logger.warnin(f"Deleting {job_name} #{build_number} is done")
+            logging.warnin(f"Deleting {job_name} #{build_number} is done")
 
     def update_job_config(self, job_name, data=None):
         """
@@ -221,28 +221,28 @@ class Jenkins:
         headers = self._set_header({"content-type": "application/xml"})
         job_update_req = requests.post(job_config_url, data=data, auth=self._auth, headers=headers)
         if job_update_req.status_code != 200:
-            logger.error(job_update_req.text)
+            logging.error(job_update_req.text)
             raise Exception(f"Updating {job_name}'s config.xml has been failed")
         else:
-            logger.info(f"Updating {job_name}'s config.xml is done with SUCCESS")
+            logging.info(f"Updating {job_name}'s config.xml is done with SUCCESS")
 
     def create_job(self, job_name, data):
         if job_name in self._jobDict:
             message = f"You have been trying to create a job '{job_name}' but it exists!"
-            logger.warning(message)
+            logging.warning(message)
             raise Exception(message)
         else:
             create_url = f"{self._url}/createItem?name={job_name}"
             job_url = f"{self._url}/job/{job_name}"
             headers = self._set_header({"content-type": "application/xml"})
-            logger.info(f"Create a job {job_name} with the url {create_url}")
+            logging.info(f"Create a job {job_name} with the url {create_url}")
             create_job = requests.post(create_url, auth=self._auth, data=data, headers=headers)
             if create_job.status_code == 200:
-                logger.info(f"Create a job {job_name}: SUCCESS")
-                logger.info(f"Job url: {job_url}")
+                logging.info(f"Create a job {job_name}: SUCCESS")
+                logging.info(f"Job url: {job_url}")
             else:
-                logger.error(f"Create a job {job_name}: FAILED")
-                logger.error(f"{create_job.text}")
+                logging.error(f"Create a job {job_name}: FAILED")
+                logging.error(f"{create_job.text}")
                 raise Exception(f"Create a job {job_name}: FAILED")
 
     def create_agent(self, agent_name, agent_type, data):
@@ -250,19 +250,19 @@ class Jenkins:
         create_url = f"{self._url}/computer/doCreateItem"
         agent_url = f"{self._url}/computer/{agent_name}"
         headers = self._set_header({'Content-Type': 'application/x-www-form-urlencoded'})
-        logger.info(f"Create an agent {agent_name} with the url {create_url}")
+        logging.info(f"Create an agent {agent_name} with the url {create_url}")
         # create_job = requests.post(create_url, auth=self._auth, data=data, headers=headers)
         if agent_name is not None and agent_type is not None:
             data['name'] = agent_name
             data['type'] = agent_type
         create_job = requests.post(create_url, auth=self._auth, data=data, headers=headers)
         if create_job.status_code == 200:
-            logger.info(f"Create a agent {agent_name}: SUCCESS")
-            logger.info(f"Job url: {agent_url}")
+            logging.info(f"Create a agent {agent_name}: SUCCESS")
+            logging.info(f"Job url: {agent_url}")
         else:
-            logger.error(f"Create a agent {agent_name}: FAILED")
-            logger.error(f"{create_job.text}")
-            logger.error(f"{create_job.status_code}")
+            logging.error(f"Create a agent {agent_name}: FAILED")
+            logging.error(f"{create_job.text}")
+            logging.error(f"{create_job.status_code}")
             raise Exception(f"Create a agent {agent_name}: FAILED")
 
     def delete_job(self, job_name):
@@ -271,31 +271,31 @@ class Jenkins:
             delete_url = f"{job_url}/doDelete"
             delete_request = requests.post(delete_url, auth=self._auth)
             if delete_request.status_code != 200:
-                logger.error(f"INFO: Delete a job {job_name}")
+                logging.error(f"INFO: Delete a job {job_name}")
             else:
-                logger.error(f"{delete_request.status_code}")
-                logger.error(f"When deleting {job_name}")
+                logging.error(f"{delete_request.status_code}")
+                logging.error(f"When deleting {job_name}")
         else:
-            logger.error(f"{job_name} doesn't exist on Jenkins. So you can't delete it.")
+            logging.error(f"{job_name} doesn't exist on Jenkins. So you can't delete it.")
 
     def set_agent_offline(self, agent_name, description):
         agent_url = self.url + "/computer/" + agent_name + "/"
         res = self.get_object(agent_url, tree="&tree=offline")
         if res["offline"]:
-            logger.error(f"Agent {agent_url} has been already offline mode")
+            logging.error(f"Agent {agent_url} has been already offline mode")
             return True
         else:
             res_offline = requests.post(agent_url + "/toggleOffline", auth=self._auth,
                                         data={"offlineMessage": description})
             if res_offline.status_code != 200:
-                logger.error(f"Can't set {agent_name} as offline mode. Please check {agent_url}")
+                logging.error(f"Can't set {agent_name} as offline mode. Please check {agent_url}")
                 return False
             else:
-                logger.warning(f"Done: {agent_name} has been set as offline")
+                logging.warning(f"Done: {agent_name} has been set as offline")
                 return True
 
     def get_build_parameters(self, job_name, number):
-        logger.debug(f"Getting parameters from {job_name} #{number}")
+        logging.debug(f"Getting parameters from {job_name} #{number}")
         # params
         #   - Key: Parameter name
         #   - Value: Parameter value
@@ -303,7 +303,7 @@ class Jenkins:
         job_obj = self.get_job(job_name)
         build_url = job_obj['url'] + f"{number}/"
         build_parameter_tree = "&tree=actions[parameters[name,value]]"
-        logger.debug(f"Build url: {build_url}, Build parameter tree: {build_parameter_tree}")
+        logging.debug(f"Build url: {build_url}, Build parameter tree: {build_parameter_tree}")
         build_param_data = self.get_object(build_url, tree=build_parameter_tree)
         param_class_val = "hudson.model.ParametersAction"
         param_actions = list(
@@ -313,12 +313,12 @@ class Jenkins:
             action_params = param_action["parameters"]
             for each_param in action_params:
                 params[each_param['name']] = each_param['value']
-        logger.debug(f"Number of parameters: {len(params)}")
+        logging.debug(f"Number of parameters: {len(params)}")
         params['url'] = build_url
         return params
 
     def get_build_causes(self, job_name, number):
-        logger.debug(f"Getting parameters from {job_name} #{number}")
+        logging.debug(f"Getting parameters from {job_name} #{number}")
         # params
         #   - Key: Parameter name
         #   - Value: Parameter value
@@ -326,7 +326,7 @@ class Jenkins:
         job_obj = self.get_job(job_name)
         build_url = job_obj['url'] + f"{number}/"
         build_cause_tree = "&tree=actions[causes[*]]"
-        logger.debug(f"Build url: {build_url}, Build parameter tree: {build_cause_tree}")
+        logging.debug(f"Build url: {build_url}, Build parameter tree: {build_cause_tree}")
         build_cause_data = self.get_object(build_url, tree=build_cause_tree)
         cause_class_val = "hudson.model.CauseAction"
         cause_actions = list(
@@ -336,11 +336,11 @@ class Jenkins:
             actions = cause_action["causes"]
             for each_cause in actions:
                 causes.append(each_cause)
-        logger.debug(causes)
+        logging.debug(causes)
         return causes
 
     def get_running_builds(self):
-        logger.debug(f"Get a list of running builds on Jenkins {self.url}")
+        logging.debug(f"Get a list of running builds on Jenkins {self.url}")
         computer_fields = "displayName,idle,offline,numExecutors"
         executor_fields = "idle,number,currentExecutable[fullDisplayName,number,url]"
         tree_data = f"tree=computer[{computer_fields},executors[{executor_fields}]]"
@@ -371,11 +371,11 @@ class Jenkins:
         return {"running_builds": running_builds, "busy_hosts": busy_hosts, "idle_hosts": idle_hosts}
 
     def get_git_build_data(self, job_name, build_number):
-        logger.debug(f"Get git build data from {job_name} #{build_number}")
+        logging.debug(f"Get git build data from {job_name} #{build_number}")
         job_obj = self.get_job(job_name)
         build_url = job_obj['url'] + f"{build_number}/"
         git_build_data_tree = "&tree=actions[_class,causes[userName],remoteUrls,buildsByBranchName[*[*]]]"
-        logger.debug(f"Build url: {build_url}, Build parameter tree: {git_build_data_tree}")
+        logging.debug(f"Build url: {build_url}, Build parameter tree: {git_build_data_tree}")
         git_build_data = self.get_object(build_url, tree=git_build_data_tree)
         target_class_name = "hudson.plugins.git.util.BuildData"
         cause_class_name = "hudson.model.CauseAction"
@@ -400,10 +400,29 @@ class Jenkins:
                 "requestor": build_user}
 
     def get_in_queue_builds(self):
-        logger.debug(f"Get a list of running builds on Jenkins {self.url}")
+        logging.debug(f"Get a list of running builds on Jenkins {self.url}")
         #tree_data = f"tree=items[*[*]]"
         tree_data = f"tree=items[_class,actions[*],id,inQueueSince,task[*],url,why,timestamp]"
         get_url = self.url + "/queue/"
         res = self.get_object(get_url, tree=tree_data)
         queued_items = res["items"]
         return queued_items
+
+    def check_slot_available(self, target_label):
+        logging.info(f"Check if available slots exist for label {target_label} on {self._url}")
+        get_executors_url = f"{self._url}/computer/api/json?pretty=true&tree=computer[displayName,numExecutor,idle,offline,assignedLabels[name],executors[idle]]"
+        get_executors = requests.get(get_executors_url, auth=self._auth)
+        agents = json.loads(get_executors.text)["computer"]
+        assigned_agents = []
+        available_agents = []
+        for each_agent in agents:
+            agent_name = each_agent["displayName"]
+            assigned_labels = list(map(lambda l: l["name"], each_agent["assignedLabels"]))
+            if target_label in assigned_labels:
+                assigned_agents.append(each_agent)
+                agent_non_available = len(list(filter(lambda e: e["idle"], each_agent["executors"]))) == 0
+                if agent_non_available:
+                    logging.info("")
+                else:
+                    available_agents.append(each_agent)
+        return len(available_agents) != 0
