@@ -426,3 +426,13 @@ class Jenkins:
                 else:
                     available_agents.append(each_agent)
         return len(available_agents) != 0
+
+    def stop_build(self, job_name, build_number):
+        logging.info(f"Stop job '{job_name}', number #{build_number}")
+        job_name_uri = job_name.replace("/", "/job/")
+        build_url = f"{self._url}/job/{job_name_uri}/{build_number}/"
+        stop_url = f"{build_url}/stop"
+        stop_req = requests.post(stop_url, auth=self._auth)
+        logging.info(f"Status code = {stop_req.status_code}")
+        logging.info(f"Response = {stop_req.text}")
+        return stop_req.status_code, stop_req.text
