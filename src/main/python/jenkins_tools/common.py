@@ -317,6 +317,24 @@ class Jenkins:
         params['url'] = build_url
         return params
 
+    def get_build_parameters_by_url(self, build_url):
+        logging.debug(f"Getting parameters from {build_url}")
+        params = {}
+        build_parameter_tree = "&tree=actions[parameters[name,value]]"
+        logging.debug(f"Build url: {build_url}, Build parameter tree: {build_parameter_tree}")
+        build_param_data = self.get_object(build_url, tree=build_parameter_tree)
+        param_class_val = "hudson.model.ParametersAction"
+        param_actions = list(
+            filter(lambda each_action: "_class" in each_action and each_action["_class"] == param_class_val,
+                   build_param_data["actions"]))
+        for param_action in param_actions:
+            action_params = param_action["parameters"]
+            for each_param in action_params:
+                params[each_param['name']] = each_param['value']
+        logging.debug(f"Number of parameters: {len(params)}")
+        params['url'] = build_url
+        return params
+
     def get_build_causes(self, job_name, number):
         logging.debug(f"Getting parameters from {job_name} #{number}")
         # params
@@ -435,4 +453,11 @@ class Jenkins:
         stop_req = requests.post(stop_url, auth=self._auth)
         logging.info(f"Status code = {stop_req.status_code}")
         logging.info(f"Response = {stop_req.text}")
+        return stop_req.status_code, stop_req.text
+
+    def stop_build_by_url(self, build_url):
+        logging.info(f"Stop a build: {build_url}")
+        stop_url = f"{build_url}stop"
+        stop_req = requests.post(stop_url, auth=self._auth)
+        logging.info(f"Build Stop Request Status code = {stop_req.status_code}")
         return stop_req.status_code, stop_req.text
