@@ -116,8 +116,9 @@ class Jenkins:
         else:
             try:
                 res_json = json.loads(res.text)
-            except:
+            except Exception as e:
                 # Return an object's config.xml data
+                logging.error(str(e))
                 return res.text
             else:
                 # Return an object's detailed information
