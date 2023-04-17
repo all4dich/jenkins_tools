@@ -1,0 +1,18 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Run Test') {
+            steps {
+                script {
+                    def test_string = '{"name": "Sunjoo", "date_to_birth": "12/20/1977"}'
+                    def test_json = readJSON text: test_string
+                    def name = test_json["name"]
+                    echo name
+                    sh 'echo ' + name  + ' \
+                    test-' + name
+                }
+            }
+        }
+    }
+}
