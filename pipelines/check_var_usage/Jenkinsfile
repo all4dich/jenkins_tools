@@ -9,8 +9,8 @@ pipeline {
                     def test_json = readJSON text: test_string
                     def name = test_json["name"]
                     echo name
-                    sh 'echo \\# original: ' + name  + ', \\# next: \
-                    test-' + name
+                    sh "echo \\# original: " + name  + ", \\# next: \
+                    test-" + name
                 }
             }
         }
