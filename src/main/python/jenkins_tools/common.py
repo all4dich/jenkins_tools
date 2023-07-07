@@ -152,6 +152,19 @@ class Jenkins:
             self._slaves.append(each_slave)
         return self._slaves
 
+    def delete_agent(self, agent_name):
+        delete_agent_url = f"{self.url}/computer/{agent_name}/doDelete"
+        logging.info(f"Delete the agent {agent_name} from {self.url}")
+        delete_agent_request = requests.post(url=delete_agent_url, auth=self._auth)
+        if delete_agent_request.status_code != 200:
+            logging.error(f"Error status code = {delete_agent_request.status_code}")
+            logging.error(delete_agent_request.text)
+            raise Exception(f"Deleting the agent {agent_name} from {self.url} has been failed")
+        else:
+            logging.warning(f"Deleting the agent {agent_name} is done")
+
+
+
     def get_job(self, job_name):
         """
         Get a job uri and return its information
